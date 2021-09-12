@@ -1,0 +1,13 @@
+name = "ARCSolver"
+uuid = "8e1303d3-2502-40b6-8323-aceee5698be4"
+authors = ["Matt Bowers <mattb6503@gmail.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
