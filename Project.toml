@@ -3,6 +3,18 @@ uuid = "8e1303d3-2502-40b6-8323-aceee5698be4"
 authors = ["Matt Bowers <mattb6503@gmail.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+Debugger = "31a5f54b-26ea-5ae9-a837-f05ce5417438"
+Gadfly = "c91e804a-d5a3-530f-b6f0-dfbca275c004"
+ImageView = "86fae568-95e7-573e-a6b2-d8a6b900c9ef"
+Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+
 [compat]
 julia = "1"
 

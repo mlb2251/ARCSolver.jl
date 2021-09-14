@@ -1,5 +1,16 @@
 module ARCSolver
+using Reexport
+include("grids.jl")
+@reexport using .Grids
 
-# Write your package code here.
+include("render.jl")
+@reexport using .Render
+
+include("solve.jl")
+@reexport using .Solve
+
+include("diff.jl")
+@reexport using .Diff
+
 
 end

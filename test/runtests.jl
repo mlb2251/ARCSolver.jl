@@ -1,4 +1,4 @@
-using ARCSolver
+using .ARCSolver
 using Test
 
 @testset "ARCSolver.jl" begin
