@@ -39,14 +39,19 @@ function diff_grids(A::Matrix, B::Matrix)
         # pad with -1s to allow for .== elemwise comparison (we'll ignore the -1s during comparison)
         aa, bb = paddedviews(-1, A, oB)
         match = (aa .> 0) .& (bb .== aa) # bitmatrix relative to A indicating where theyre identical and nonzero
-        println("$d1 $d2 -> $(sum(match))/$(index_overlap(A,oB))")
+        
+        # helpful debug comment:
+        # println("$d1 $d2 -> $(sum(match))/$(index_overlap(A,oB))")
         push!(col_imgs, to_img_diff(A, oB, Float64.(match)))
         if d2 == d2_end
             push!(imgs, pack_imgs(col_imgs...,dim=2))
             col_imgs = Any[]
         end
     end
-    pack_imgs(imgs...,dim=1)
+    grid = pack_imgs(imgs...,dim=1)
+    pack_imgs(to_img(A),to_img(B),grid,dim=2)
 end
+
+
 
 end
