@@ -3,12 +3,14 @@ using LinearAlgebra
 using OffsetArrays
 using PaddedViews
 export diff_grids
-using ..Render
+using ..Render, ..Grids
 
 
 
  
 index_overlap(A,B) = length(intersect(CartesianIndices(A),CartesianIndices(B)))
+
+
 
 function diff_grids(A::Matrix, B::Matrix)
     Asz1,Asz2 = size(A)
@@ -31,8 +33,7 @@ function diff_grids(A::Matrix, B::Matrix)
     # sanity checks
     @assert index_overlap(A,oBinit) == 1
     @assert index_overlap(A,OffsetArray(oBinit, d1_end, d2_end)) == 1
-    imgs = Any[]
-    col_imgs = Any[]
+    diff_grid = Matrix{Any}(undef, d1_end+1, d2_end+1)
     for d1 in 0:d1_end, d2 in 0:d2_end
         # slide B using offset
         oB = OffsetArray(oBinit, d1, d2)
@@ -40,16 +41,12 @@ function diff_grids(A::Matrix, B::Matrix)
         aa, bb = paddedviews(-1, A, oB)
         match = (aa .> 0) .& (bb .== aa) # bitmatrix relative to A indicating where theyre identical and nonzero
         
+        diff_grid[d1+1,d2+1] = (a=A,b=oB,match=match)
+
         # helpful debug comment:
         # println("$d1 $d2 -> $(sum(match))/$(index_overlap(A,oB))")
-        push!(col_imgs, to_img_diff(A, oB, Float64.(match)))
-        if d2 == d2_end
-            push!(imgs, pack_imgs(col_imgs...,dim=2))
-            col_imgs = Any[]
-        end
     end
-    grid = pack_imgs(imgs...,dim=1)
-    pack_imgs(to_img(A),to_img(B),grid,dim=2)
+    DiffGrid(diff_grid,A,B) # list of list of namedtuples
 end
 
 

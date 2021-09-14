@@ -7,8 +7,6 @@ import JSON
 using ..Render
 using ..Grids
 
-println("imports done")
-
 function task_of_json(json, path)
     ARCTask(
         ios_of_json(json["train"]),
@@ -27,7 +25,7 @@ end
 
 function grid_of_json(json)
     # transpose to match how the official challenge displays images
-    transpose(convert(Matrix{Int8}, hcat(json...)))
+    transpose(Int8.(hcat(json...)))
 end
 
 

@@ -3,7 +3,7 @@ using Images
 using ..Grids
 using ImageView
 
-export colors, to_img, pack_imgs, to_img_diff
+export colors, to_img, pack_imgs, to_img_diff, to_img_diffgrid
 
 const colors = [
     colorant"#000000",
@@ -98,14 +98,12 @@ function pack_imgs(imgs::Matrix...; dim=2, pad=colorant"light gray", npad=5)
 end
 
 
-function to_img_diff(A,B,match)
-    
+function to_img_diff(A_B_match)
+    A,B,match = A_B_match
     
     function torgb(x)
         z = x/20 # scale to be <.5 so we dont exceed 1.0
-
         z[z.>0] .+= .3 # extra boost for nonzero
-
         z .+= .15 # everyone gets a slight boost
         z
     end
@@ -117,6 +115,15 @@ function to_img_diff(A,B,match)
     # 26224 bytes
     res = collect(colorview(RGB, paddedviews(0, a, b, m)...))
     return res
+end
+
+function to_img(diff_grid::DiffGrid)
+    img_grid = to_img_diff.(diff_grid.grid)
+    img_grid = pack_imgs(
+        [pack_imgs(imgs...,dim=2) for imgs in eachrow(img_grid)]...,
+        dim=1
+        )
+    pack_imgs(to_img(diff_grid.A),to_img(diff_grid.B),img_grid,dim=2)
 end
 
 end
