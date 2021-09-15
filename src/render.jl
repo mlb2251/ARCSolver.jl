@@ -2,6 +2,7 @@ module Render
 using Images
 using ..Grids
 using ImageView
+using OffsetArrays
 
 export to_img, pack_imgs, to_img_diff, to_img_diffgrid
 
@@ -12,7 +13,15 @@ ImageView.imshow(io::ARCIO) = imshow(to_img(io))
 ImageView.imshow(io::ARCTask) = imshow(to_img(io))
 ImageView.imshow(io::ARCGrid) = imshow(to_img(io))
 
-@inline scale_grid(img::Matrix,scale::Int) = repeat(img; inner=(scale,scale))
+@inline scale_grid(img::AbstractMatrix,scale::Int) = repeat(img; inner=(scale,scale))
+
+# surprisingly verbose function to scale from a grid pixel location to a view of a range of pixels on a larger grid
+@inline function view_px(img::AbstractArray, scale::Int, x::Int, y::Int)
+    top_left_x = (x-1)*scale + 1
+    top_left_y = (y-1)*scale + 1
+    view(img,top_left_x:top_left_x+scale-1,top_left_y:top_left_y+scale-1)
+end
+@inline view_px(img::AbstractArray, scale::Int, I::CartesianIndex) = view_px(img,scale,I[1],I[2])
 
 function gridlines!(img,cell_sz; color=colorant"gray")
     @assert mod.(size(img),cell_sz) == (0,0)
@@ -20,6 +29,14 @@ function gridlines!(img,cell_sz; color=colorant"gray")
     img[:,1:cell_sz:end] .= color
     img[end,:] .= color
     img[:,end] .= color
+    img
+end
+
+function borders!(img, up=true, down=true, left=true, right=true; color=colorant"gray")
+    up && (img[1,:] .= color)
+    down && (img[end,:] .= color)
+    left && (img[:,1] .= color)
+    right && (img[:,end] .= color)
     img
 end
 
@@ -58,6 +75,7 @@ end
 function to_img(grid::RenderGrid)
     @assert all(px->px.size==first(grid).size, grid) "not all RenderPixels are the same size in this RenderGrid"
     grid = to_img.(grid)
+    # hvcat(size(grid),grid...) # doesnt work
     vcat([hcat(imgs...) for imgs in eachrow(grid)]...)
 end
 
@@ -74,7 +92,7 @@ end
 
 # to_img(grid::OffsetArrays.OffsetMatrix{RenderPixel, RenderGrid}) = to_img(grid.)
 
-function to_img(diff::ARCDiff; edges=false)
+function to_img(diff::ARCDiff; edges=true)
 
     function grayscale(img)
         img /= 9 # scale to 0.0-1.0
@@ -83,15 +101,39 @@ function to_img(diff::ARCDiff; edges=false)
         img .+ .2 # everyone gets a slight boost
     end
 
+    # R G B are all indexed like A but B has some negative indices in it too
     R = grayscale(diff.A)
     G = grayscale(diff.B)
     B = Float64.(diff.match)
 
-    if !edges
-        return collect(colorview(RGB, paddedviews(0, R, G, B)...))
+    # @show diff.B.offsets
+
+    # img = colorview(RGB, paddedviews(0, R, G, B)...)
+    R,G,B = 
+    # @assert R.indices == G.indices == B.indices
+    # x_offset, y_offset = R.indices   
+    img = collect(colorview(RGB, paddedviews(0, R, G, B)...))
+     # strip offsets to make colorview() and reinterpret() happy
+    # img = OffsetArray(img, offsets...) # add offsets back in for edge-adding
+
+
+    if edges
+        img = scale_grid(img,5)
+        for IA in CartesianIndices(diff.A)
+            # IA = index in A
+            # Ishared = index in the big shared image made by paddedviews (which indexes with 1 at the top right)
+            # basically if an offset for B was <0 then we need to add that amount of offset to all our indices wrt A to get indices wrt the shared image
+            # offset1 = min(diff.B.offsets[1],0)
+            # offset2 = min(diff.B.offsets[2],0)
+            # Ishared = IA + CartesianIndex(-offset1,-offset2) # we negate them because
+            # @assert Ishared >= CartesianIndex(1,1)
+            # IOffset = Tuple(IA) .+ min.(diff.A.offsets,(1,1))
+            borders!(view_px(img,5,IA+diff.padded_offsets),diff.edges_match[IA,:]..., color=colorant"white")
+        end
     end
 
-    px_sz = 5
+    parent(img) # remove offsets for rendering
+end
 
     # @show size(R) typeof(R) size(diff.edges_match) typeof(diff.edges_match)
     # @assert size(diff.match)[1:2] == size(R)
@@ -101,21 +143,20 @@ function to_img(diff::ARCDiff; edges=false)
     # left_border = diff.edges_match[:,:,3] .== true
     # right_border = diff.edges_match[:,:,4] .== true
 
-    up_border = diff.edges_match[:,:,1]
-    down_border = diff.edges_match[:,:,2]
-    left_border = diff.edges_match[:,:,3]
-    right_border = diff.edges_match[:,:,4]
-
+    # up_border = diff.edges_match[:,:,1]
+    # down_border = diff.edges_match[:,:,2]
+    # left_border = diff.edges_match[:,:,3]
+    # right_border = diff.edges_match[:,:,4]
 
     # up_border, down_border, left_border, right_border, match
 
 
     # R,G,B = collect.(paddedviews(RenderPixel(colorant"black",px_sz,0), R, G, B))
-    R,G,B = collect.(paddedviews(0, R, G, B))
+    # R,G,B = collect.(paddedviews(0, R, G, B))
 
-    R = RenderPixel.(RGB.(R,0,0), px_sz, 0)
-    G = RenderPixel.(RGB.(0,G,0), px_sz, 0)
-    B = RenderPixel.(RGB.(0,0,B), px_sz, 0)
+    # R = RenderPixel.(RGB.(R,0,0), px_sz, 0)
+    # G = RenderPixel.(RGB.(0,G,0), px_sz, 0)
+    # B = RenderPixel.(RGB.(0,0,B), px_sz, 0)
 
 
 
@@ -135,27 +176,27 @@ function to_img(diff::ARCDiff; edges=false)
     # @assert all(rgb->rgb.r < 1.,res)
     # @assert all(rgb->rgb.g < 1.,res)
     # @assert all(rgb->rgb.b < 1.,res)
-    res = to_img(R) .+ to_img(G) .+ to_img(B)
-    return res
+    # res = to_img(R) .+ to_img(G) .+ to_img(B)
+    # return res
 
 
     # R = to_img(RenderPixel.(RGB.(R,0,0), 1, 0))
     # G = to_img(RenderPixel.(RGB.(0,G,0), 1, 0))
     # B = to_img(RenderPixel.(RGB.(0,0,B), 1, 0))
 
-    return paddedviews(0, R, G, B)
+    # return paddedviews(0, R, G, B)
 
-    return collect(colorview(RGB, paddedviews(zero(RGB), R, G, B)...))
+    # return collect(colorview(RGB, paddedviews(zero(RGB), R, G, B)...))
 
 
-    return collect(colorview(RGB, paddedviews(0, R, G, B)...))
+    # return collect(colorview(RGB, paddedviews(0, R, G, B)...))
     
-    edges_match = diff.edges_match
+    # edges_match = diff.edges_match
 
     
-end
+# end
 
-function to_img(diff_grid::ARCDiffGrid; edges=false)
+function to_img(diff_grid::ARCDiffGrid; edges=true)
     img_grid = to_img.(diff_grid.grid,edges=edges)
     img_grid = pack_imgs(
         [pack_imgs(imgs...,dim=2) for imgs in eachrow(img_grid)]...,

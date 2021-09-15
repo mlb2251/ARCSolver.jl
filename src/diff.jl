@@ -55,15 +55,18 @@ function diff_grids(A::ARCGrid, B::ARCGrid)
         # Aint = A[shared_indices]
         # edges_Aint = edges_A[shared_indices,:]
         # edges_oBint = edges_oB[shared_indices,:]
+        
+        # all of the things paddedviews will return will be offsetarrays! so the same elems
+        # are still in all the same locations they were in A and oB before.
         Aint, oBint = paddedviews(-1, A, oB)
         edges_Aint, edges_oBint = paddedviews(false,edges_A, edges_oB)
 
-        # nonzero pixels that match
+        # nonzero pixels that match. Match will be indexed just like A.
         match = falses(size(A))
         match[findall(Aint .== oBint .> 0)] .= true
         # @show typeof(match)
 
-        # edges that match
+        # edges that match. These will be indexed just like A.
         edges_match = falses(size(edges_A))
         edges_match[findall(edges_Aint .== edges_oBint .== true)] .= true
         # edges_match,_ = paddedview(0, edges_match,A) # pad edges_match to match A

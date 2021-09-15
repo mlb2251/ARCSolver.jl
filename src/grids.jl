@@ -53,13 +53,24 @@ end
 
 
 struct ARCDiff
-    A :: ARCGrid
-    B :: OffsetArrays.OffsetMatrix
+    A :: ARCGrid # normal indices
+    B :: OffsetArrays.OffsetMatrix # index like A! has whatever size B has
     # match :: OffsetArrays.OffsetMatrix{Bool,BitMatrix}
-    match :: BitMatrix
+    match :: BitMatrix # index like A (same size as A)
     # edges_match :: OffsetArrays.OffsetArray{Bool,3, BitArray{3}}
-    edges_match :: BitArray{3}
-
+    edges_match :: BitArray{3} # index like A (same size as A)
+    offsets :: Tuple{Int,Int} # offset of B relative to A (literally ArcDiff.B.offsets)
+    padded_offsets :: CartesianIndex{2} # if you collect(paddedviews(fill,A,B)) and need to erase the, adding these offsets to A indices will give you indices in the larger image (basically, if B has negative offsets (up and to the left of A) then we need to shift A indices by the magnitude of that offset in the positive direction)
+end
+function ARCDiff(A,B,match,edges_match)
+    ARCDiff(
+        A,
+        B,
+        match,
+        edges_match,
+        B.offsets,
+        CartesianIndex(.-min.(B.offsets,0))
+    )
 end
 
 struct ARCDiffGrid

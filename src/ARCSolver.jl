@@ -33,9 +33,9 @@ function main()
 end
 
 function simple()
-    task = load_tasks(n=20)[2]
+    task = load_tasks(n=20)[14]
     dg = diff_grids(task.ios[1]...)
-    to_img(dg.A)
+    to_img(dg)
 end
 
 end
