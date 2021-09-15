@@ -1,6 +1,6 @@
 module Grids
 
-export ARCGrid,ARCIO,ARCTask, ARCDiff, ARCDiffGrid, edges_of_grid, RenderGrid, RenderPixel, colors
+export ARCGrid,ARCIO,ARCTask, ARCDiff, ARCDiffGrid, edges_of_grid, colors
 import OffsetArrays
 using Images
 
@@ -20,29 +20,6 @@ const colors = [
 const ARCGrid = Matrix{Int8}
 const ARCIO = NamedTuple{(:i,:o),Tuple{ARCGrid,ARCGrid}}
 
-
-mutable struct RenderPixel
-    color:: RGB
-    size:: Int
-    border_size:: Int
-    up_edge :: RGB
-    down_edge :: RGB
-    left_edge :: RGB
-    right_edge :: RGB
-end
-# convert Int8 to RGB
-RenderPixel(color::Int8,args...) = RenderPixel(colors[color+1],args...)
-# if only color+size are provided, add borders of the same color (ie invisible borders)
-RenderPixel(color,size) = RenderPixel(color, size, 0, colorant"gray", colorant"gray", colorant"gray", colorant"gray")
-# if only color+size are provided, add borders of the same color (ie invisible borders)
-RenderPixel(color,size,border_size) = RenderPixel(color, size, border_size, colorant"gray", colorant"gray", colorant"gray", colorant"gray")
-
-# function RenderGrid(grid::ARCGrid; args...)
-#     border_sz = px_sz > 3 ? 1 : 0
-#     RenderPixel.(grid,border_sz) :: RenderGrid
-# end
-
-const RenderGrid = Matrix{RenderPixel}
 
 
 struct ARCTask
