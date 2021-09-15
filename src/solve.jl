@@ -29,10 +29,13 @@ function grid_of_json(json)
 end
 
 
-function load_tasks(mode=:train)
+function load_tasks(mode=:train; n=0)
     @assert mode in [:train, :test]
     path = Dict(:train => "data/training", :test => "data/evaluation")[mode]
     train_files = readdir(path, join=true)
+    if n > 0
+        train_files = train_files[1:n]
+    end
     print(crayon"yellow", "loading $mode tasks...", crayon"reset")
     tasks = task_of_json.(JSON.parsefile.(train_files), train_files)
     println(crayon"yellow", "loaded $(length(tasks)) tasks", crayon"reset")

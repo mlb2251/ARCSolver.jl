@@ -3,70 +3,142 @@ using Images
 using ..Grids
 using ImageView
 
-export colors, to_img, pack_imgs, to_img_diff, to_img_diffgrid
+export to_img, pack_imgs, to_img_diff, to_img_diffgrid
 
-const colors = [
-    colorant"#000000",
-    colorant"#0074D9",
-    colorant"#FF4136",
-    colorant"#2ECC40",
-    colorant"#FFDC00",
-    colorant"#AAAAAA",
-    colorant"#F012BE",
-    colorant"#FF851B",
-    colorant"#7FDBFF",
-    colorant"#870C25",
-]
+
 
 
 ImageView.imshow(io::ARCIO) = imshow(to_img(io))
 ImageView.imshow(io::ARCTask) = imshow(to_img(io))
 ImageView.imshow(io::ARCGrid) = imshow(to_img(io))
 
+@inline scale_grid(img::Matrix,scale::Int) = repeat(img; inner=(scale,scale))
 
-function to_img(task::ARCTask; px_sz=20, scale=1)
+function gridlines!(img,cell_sz; color=colorant"gray")
+    @assert mod.(size(img),cell_sz) == (0,0)
+    img[1:cell_sz:end,:] .= color
+    img[:,1:cell_sz:end] .= color
+    img[end,:] .= color
+    img[:,end] .= color
+    img
+end
+
+function to_img(task::ARCTask; px_sz=20)
     pack_imgs(
-    pack_imgs(dim=1,to_img.(task.ios,px_sz=px_sz,scale=scale)...),
-    pack_imgs(dim=1,to_img.(task.test_ios,px_sz=px_sz,scale=scale)...)
+    pack_imgs(dim=1,to_img.(task.ios,px_sz=px_sz)...),
+    pack_imgs(dim=1,to_img.(task.test_ios,px_sz=px_sz)...)
     )
 end
 
-function to_img(io::ARCIO; px_sz=20, scale=1)
-    pack_imgs(to_img(io.i,px_sz=px_sz,scale=scale),to_img(io.o,px_sz=px_sz,scale=scale))
+function to_img(io::ARCIO; px_sz=20)
+    pack_imgs(to_img(io.i,px_sz=px_sz),to_img(io.o,px_sz=px_sz))
 end
 
-# function to_img(grid::ARCGrid; px_sz=20, img_sz=400)
+# function to_img(grid::ARCGrid; px_sz=20, scale=1)
 #     # convert to colors
 #     img = map(x -> colors[x+1], grid)
-#     # scale a bit
-#     img = repeat(img; inner=(px_sz,px_sz))
-#     # add 1 pixel grid (prior to more scaling)
-#     img[1:px_sz:end,:] .= colorant"gray"
-#     img[:,1:px_sz:end] .= colorant"gray"
-#     img[end,:] .= colorant"gray"
-#     img[:,end] .= colorant"gray"
 
-#     # scale to output image size
-#     imresize(img, img_sz, img_sz)
+#     # scale a bit so each orig
+#     img = scale_grid(img,px_sz)
+
+#     # add 1 px border
+#     if px_sz > 3
+#         gridlines!(img,px_sz)
+#     end
+
+#     # scale some more!
+#     scale_grid(img,scale)
 # end
 
-function to_img(grid::ARCGrid; px_sz=20, scale=1)
-    # convert to colors
-    img = map(x -> colors[x+1], grid)
+function to_img(grid::ARCGrid; px_sz=20)
+    border_sz = px_sz > 3 ? 1 : 0
+    to_img(RenderPixel.(grid,px_sz,border_sz) :: RenderGrid)
+end
 
-    # scale a bit so each orig
-    img = repeat(img; inner=(px_sz,px_sz))
+function to_img(grid::RenderGrid)
+    @assert all(px->px.size==first(grid).size, grid) "not all RenderPixels are the same size in this RenderGrid"
+    grid = to_img.(grid)
+    vcat([hcat(imgs...) for imgs in eachrow(grid)]...)
+end
 
-    # add 1 px border
-    if px_sz > 1
-        img[1:px_sz:end,:] .= colorant"gray"
-        img[:,1:px_sz:end] .= colorant"gray"
-        img[end,:] .= colorant"gray"
-        img[:,end] .= colorant"gray"
+function to_img(px::RenderPixel)
+    img = fill(px.color,px.size,px.size)
+    if px.border_size > 0
+        img[1:px.border_size,:] .= px.up_edge
+        img[end:end-px.border_size,:] .= px.down_edge
+        img[:,1:px.border_size] .= px.left_edge
+        img[:,end:end-px.border_size] .= px.right_edge
+    end
+    img
+end
+
+# to_img(grid::OffsetArrays.OffsetMatrix{RenderPixel, RenderGrid}) = to_img(grid.)
+
+function to_img(diff::ARCDiff; edges=false)
+
+    function grayscale(img)
+        img /= 9 # scale to 0.0-1.0
+        img ./= 2 # scale to 0.0-0.5
+        img[img.>0] .+= .3 # extra boost for nonzero (so black background stays dark)
+        img .+ .2 # everyone gets a slight boost
     end
 
-    # scale some more!
-    repeat(img; inner=(scale,scale))
+    R = grayscale(diff.A)
+    G = grayscale(diff.B)
+    B = Float64.(diff.match)
+
+    if !edges
+        return collect(colorview(RGB, paddedviews(0, R, G, B)...))
+    end
+
+    px_sz = 5
+
+    @show size(R) typeof(R) size(diff.edges_match) typeof(diff.edges_match)
+
+    R = RenderPixel.(RGB.(R,0,0), px_sz, 0)
+    G = RenderPixel.(RGB.(0,G,0), px_sz, 0)
+    B = RenderPixel.(RGB.(0,0,B), px_sz, 0)
+
+    R,G,B = collect.(paddedviews(RenderPixel(colorant"black",px_sz,0), R, G, B))
+    # @assert all(rgb->rgb.color.r < 1.,R)
+    # @assert all(rgb->rgb.color.g < 1.,G)
+    # @assert all(rgb->rgb.color.b < 1.,B)
+
+    # @assert all(rgb->rgb.r == 0,G)
+    # @assert all(rgb->rgb.g < 1.,g)
+    # @assert all(rgb->rgb.b < 1.,b)
+
+
+    # @show typeof(res)
+    # @assert all(rgb->rgb.r < 1.,res)
+    # @assert all(rgb->rgb.g < 1.,res)
+    # @assert all(rgb->rgb.b < 1.,res)
+    return to_img(R) .+ to_img(G) .+ to_img(B)
+
+
+    # R = to_img(RenderPixel.(RGB.(R,0,0), 1, 0))
+    # G = to_img(RenderPixel.(RGB.(0,G,0), 1, 0))
+    # B = to_img(RenderPixel.(RGB.(0,0,B), 1, 0))
+
+    return paddedviews(0, R, G, B)
+
+    return collect(colorview(RGB, paddedviews(zero(RGB), R, G, B)...))
+
+
+    return collect(colorview(RGB, paddedviews(0, R, G, B)...))
+    
+    edges_match = diff.edges_match
+
+    
+end
+
+function to_img(diff_grid::ARCDiffGrid; edges=false)
+    img_grid = to_img.(diff_grid.grid,edges=edges)
+    img_grid = pack_imgs(
+        [pack_imgs(imgs...,dim=2) for imgs in eachrow(img_grid)]...,
+        dim=1
+        )
+    pack_imgs(to_img(diff_grid.A),to_img(diff_grid.B),img_grid,dim=2)
 end
 
 
@@ -97,33 +169,5 @@ function pack_imgs(imgs::Matrix...; dim=2, pad=colorant"light gray", npad=5)
     out
 end
 
-
-function to_img_diff(A_B_match)
-    A,B,match = A_B_match
-    
-    function torgb(x)
-        z = x/20 # scale to be <.5 so we dont exceed 1.0
-        z[z.>0] .+= .3 # extra boost for nonzero
-        z .+= .15 # everyone gets a slight boost
-        z
-    end
-
-    a = torgb(A) # 12336
-    b = torgb(B) # 2960
-    m = Float64.(match) # 7360
-
-    # 26224 bytes
-    res = collect(colorview(RGB, paddedviews(0, a, b, m)...))
-    return res
-end
-
-function to_img(diff_grid::DiffGrid)
-    img_grid = to_img_diff.(diff_grid.grid)
-    img_grid = pack_imgs(
-        [pack_imgs(imgs...,dim=2) for imgs in eachrow(img_grid)]...,
-        dim=1
-        )
-    pack_imgs(to_img(diff_grid.A),to_img(diff_grid.B),img_grid,dim=2)
-end
 
 end

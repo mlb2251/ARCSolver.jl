@@ -1,6 +1,6 @@
 module ARCSolver
 
-export main
+export main, simple
 
 using Reexport
 include("grids.jl")
@@ -15,11 +15,11 @@ include("solve.jl")
 include("diff.jl")
 @reexport using .Diff
 
-import Images
+using Images, ImageView
 
 function main()
     tasks = load_tasks()
-    diffgrids = Vector{DiffGrid}(undef, length(tasks))
+    diffgrids = Vector{ARCDiffGrid}(undef, length(tasks))
     for i in 1:length(tasks)
         println(i)
         diffgrids[i] = diff_grids(tasks[i].ios[1]...)
@@ -30,6 +30,12 @@ function main()
     end
     println(sizeof(diffgrids))
     println(sizeof(tasks))
+end
+
+function simple()
+    task = load_tasks(n=20)[2]
+    dg = diff_grids(task.ios[1]...)
+    to_img(dg.A)
 end
 
 end

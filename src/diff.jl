@@ -6,13 +6,9 @@ export diff_grids
 using ..Render, ..Grids
 
 
-
- 
 index_overlap(A,B) = length(intersect(CartesianIndices(A),CartesianIndices(B)))
 
-
-
-function diff_grids(A::Matrix, B::Matrix)
+function diff_grids(A::ARCGrid, B::ARCGrid)
     Asz1,Asz2 = size(A)
     Bsz1,Bsz2 = size(B)
     """
@@ -26,27 +22,57 @@ function diff_grids(A::Matrix, B::Matrix)
     of B point to [1,1] we basically want all of Bs indices to be <=0 until that one pixel. This ends up
     being `OffsetArray(B, -Bsz1+1, -Bsz1+1)`.
     """
+    # todo: precompute these instead of computing them every time
+    edges_A = edges_of_grid(A)
+    edges_B = edges_of_grid(B)
+
     oBinit = OffsetArray(B, -Bsz1+1, -Bsz2+1)
+    edges_oBinit = OffsetArray(edges_B, -Bsz1+1, -Bsz2+1, 0)
+
     # highest offests to go to
     d1_end = Asz1+Bsz1-2
     d2_end = Asz2+Bsz2-2
+
     # sanity checks
     @assert index_overlap(A,oBinit) == 1
     @assert index_overlap(A,OffsetArray(oBinit, d1_end, d2_end)) == 1
-    diff_grid = Matrix{Any}(undef, d1_end+1, d2_end+1)
+
+
+    diff_grid = ARCDiffGrid(
+        Matrix{ARCDiff}(undef, d1_end+1, d2_end+1),
+        A::ARCGrid,
+        B::ARCGrid,
+    )
+
     for d1 in 0:d1_end, d2 in 0:d2_end
         # slide B using offset
         oB = OffsetArray(oBinit, d1, d2)
-        # pad with -1s to allow for .== elemwise comparison (we'll ignore the -1s during comparison)
-        aa, bb = paddedviews(-1, A, oB)
-        match = (aa .> 0) .& (bb .== aa) # bitmatrix relative to A indicating where theyre identical and nonzero
+        edges_oB = OffsetArray(edges_oBinit, d1, d2, 0)
+
+        # restrict to the overlapping region
+        shared_indices = intersect(CartesianIndices(A),CartesianIndices(oB))
+        oBint = oB[shared_indices]
+        Aint = A[shared_indices]
+        edges_Aint = edges_A[shared_indices,:]
+        edges_oBint = edges_oB[shared_indices,:]
+
+        match = falses(size(A))
+
+        # nonzero pixels that match
+        match = Aint .== oBint .!= 0
+        @show typeof(match)
+
+        dfdfd
+        # edges that match
+        edges_match = edges_Aint .== edges_oBint .== true 
+        # edges_match,_ = paddedview(0, edges_match,A) # pad edges_match to match A
         
-        diff_grid[d1+1,d2+1] = (a=A,b=oB,match=match)
+        diff_grid.grid[d1+1,d2+1] = ARCDiff(A,oB,match,edges_match)
 
         # helpful debug comment:
         # println("$d1 $d2 -> $(sum(match))/$(index_overlap(A,oB))")
     end
-    DiffGrid(diff_grid,A,B) # list of list of namedtuples
+    diff_grid
 end
 
 
