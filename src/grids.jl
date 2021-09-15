@@ -21,7 +21,7 @@ const ARCGrid = Matrix{Int8}
 const ARCIO = NamedTuple{(:i,:o),Tuple{ARCGrid,ARCGrid}}
 
 
-struct RenderPixel
+mutable struct RenderPixel
     color:: RGB
     size:: Int
     border_size:: Int
@@ -55,8 +55,11 @@ end
 struct ARCDiff
     A :: ARCGrid
     B :: OffsetArrays.OffsetMatrix
+    # match :: OffsetArrays.OffsetMatrix{Bool,BitMatrix}
     match :: BitMatrix
+    # edges_match :: OffsetArrays.OffsetArray{Bool,3, BitArray{3}}
     edges_match :: BitArray{3}
+
 end
 
 struct ARCDiffGrid

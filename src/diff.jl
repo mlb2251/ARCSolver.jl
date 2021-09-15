@@ -50,21 +50,22 @@ function diff_grids(A::ARCGrid, B::ARCGrid)
         edges_oB = OffsetArray(edges_oBinit, d1, d2, 0)
 
         # restrict to the overlapping region
-        shared_indices = intersect(CartesianIndices(A),CartesianIndices(oB))
-        oBint = oB[shared_indices]
-        Aint = A[shared_indices]
-        edges_Aint = edges_A[shared_indices,:]
-        edges_oBint = edges_oB[shared_indices,:]
-
-        match = falses(size(A))
+        # shared_indices = intersect(CartesianIndices(A),CartesianIndices(oB))
+        # oBint = oB[shared_indices]
+        # Aint = A[shared_indices]
+        # edges_Aint = edges_A[shared_indices,:]
+        # edges_oBint = edges_oB[shared_indices,:]
+        Aint, oBint = paddedviews(-1, A, oB)
+        edges_Aint, edges_oBint = paddedviews(false,edges_A, edges_oB)
 
         # nonzero pixels that match
-        match = Aint .== oBint .!= 0
-        @show typeof(match)
+        match = falses(size(A))
+        match[findall(Aint .== oBint .> 0)] .= true
+        # @show typeof(match)
 
-        dfdfd
         # edges that match
-        edges_match = edges_Aint .== edges_oBint .== true 
+        edges_match = falses(size(edges_A))
+        edges_match[findall(edges_Aint .== edges_oBint .== true)] .= true
         # edges_match,_ = paddedview(0, edges_match,A) # pad edges_match to match A
         
         diff_grid.grid[d1+1,d2+1] = ARCDiff(A,oB,match,edges_match)

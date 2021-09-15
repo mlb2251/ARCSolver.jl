@@ -93,13 +93,35 @@ function to_img(diff::ARCDiff; edges=false)
 
     px_sz = 5
 
-    @show size(R) typeof(R) size(diff.edges_match) typeof(diff.edges_match)
+    # @show size(R) typeof(R) size(diff.edges_match) typeof(diff.edges_match)
+    # @assert size(diff.match)[1:2] == size(R)
+    # @assert size(diff.edges_match)[1:2] == size(R)
+    # up_border = diff.edges_match[:,:,1] .== true
+    # down_border = diff.edges_match[:,:,2] .== true
+    # left_border = diff.edges_match[:,:,3] .== true
+    # right_border = diff.edges_match[:,:,4] .== true
+
+    up_border = diff.edges_match[:,:,1]
+    down_border = diff.edges_match[:,:,2]
+    left_border = diff.edges_match[:,:,3]
+    right_border = diff.edges_match[:,:,4]
+
+
+    # up_border, down_border, left_border, right_border, match
+
+
+    # R,G,B = collect.(paddedviews(RenderPixel(colorant"black",px_sz,0), R, G, B))
+    R,G,B = collect.(paddedviews(0, R, G, B))
 
     R = RenderPixel.(RGB.(R,0,0), px_sz, 0)
     G = RenderPixel.(RGB.(0,G,0), px_sz, 0)
     B = RenderPixel.(RGB.(0,0,B), px_sz, 0)
 
-    R,G,B = collect.(paddedviews(RenderPixel(colorant"black",px_sz,0), R, G, B))
+
+
+    # foreach(px -> px.up_edge =  , R[findall(up_border)])
+
+
     # @assert all(rgb->rgb.color.r < 1.,R)
     # @assert all(rgb->rgb.color.g < 1.,G)
     # @assert all(rgb->rgb.color.b < 1.,B)
@@ -113,7 +135,8 @@ function to_img(diff::ARCDiff; edges=false)
     # @assert all(rgb->rgb.r < 1.,res)
     # @assert all(rgb->rgb.g < 1.,res)
     # @assert all(rgb->rgb.b < 1.,res)
-    return to_img(R) .+ to_img(G) .+ to_img(B)
+    res = to_img(R) .+ to_img(G) .+ to_img(B)
+    return res
 
 
     # R = to_img(RenderPixel.(RGB.(R,0,0), 1, 0))
