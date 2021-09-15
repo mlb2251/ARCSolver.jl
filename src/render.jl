@@ -18,14 +18,14 @@ ImageView.imshow(io::Union{ARCIO,ARCTask,ARCDiff,ARCDiffGrid,ARCGrid}) = imshow(
 end
 @inline view_px(img::AbstractArray, scale::Int, I::CartesianIndex) = view_px(img,scale,I[1],I[2])
 
-function gridlines!(img,cell_sz; color=colorant"gray")
-    @assert mod.(size(img),cell_sz) == (0,0)
-    img[1:cell_sz:end,:] .= color
-    img[:,1:cell_sz:end] .= color
-    img[end,:] .= color
-    img[:,end] .= color
-    img
-end
+# function gridlines!(img,cell_sz; color=colorant"gray")
+#     @assert mod.(size(img),cell_sz) == (0,0)
+#     img[1:cell_sz:end,:] .= color
+#     img[:,1:cell_sz:end] .= color
+#     img[end,:] .= color
+#     img[:,end] .= color
+#     img
+# end
 
 function borders!(img, up=true, down=true, left=true, right=true; color=colorant"gray")
     up && (img[1,:] .= color)
@@ -46,7 +46,6 @@ function to_img(io::ARCIO; px_sz=20)
     pack_imgs(to_img(io.i,px_sz=px_sz),to_img(io.o,px_sz=px_sz))
 end
 
-# TODO convert away from Renderpixel some time
 function to_img(grid::ARCGrid; px_sz=20)
     img = map(color->colors[color+1], grid)
     img = scale_grid(img,px_sz)
